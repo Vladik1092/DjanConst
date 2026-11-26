@@ -1,0 +1,10 @@
+.venv/
+venv/
+env/
+.env
+__pycache__/
+*.py[cod]
+db.sqlite3
+.idea/
+.vscode/
+generated_builds/

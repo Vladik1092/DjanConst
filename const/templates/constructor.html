@@ -1,0 +1,206 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DjanConst — Конструктор сайтов</title>
+    <link href="https://googleapis.com" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/constructor.css' %}">
+</head>
+<body>
+
+    <!-- Верхняя панель -->
+    <header class="topbar">
+        <div class="logo">Djan<span>Const</span></div>
+
+        <div class="toolbar-actions">
+            <button type="button" class="tool-btn add-tag-btn" data-tag="h1">
+                + {% if language == 'english' %}Heading (H1){% else %}Заголовок (H1){% endif %}
+            </button>
+            <button type="button" class="tool-btn add-tag-btn" data-tag="p">
+                + {% if language == 'english' %}Paragraph (P){% else %}Текст (P){% endif %}
+            </button>
+            <button type="button" class="tool-btn add-tag-btn" data-tag="img">
+                + {% if language == 'english' %}Image (IMG){% else %}Картинка (IMG){% endif %}
+            </button>
+
+            <span class="toolbar-divider"></span>
+
+            <button type="button" class="tool-btn preset-btn" data-preset="text-left-img-right">
+                ▤ {% if language == 'english' %}Text + Image{% else %}Текст + Фото{% endif %}
+            </button>
+            <button type="button" class="tool-btn preset-btn" data-preset="img-left-text-right">
+                ▥ {% if language == 'english' %}Image + Text{% else %}Фото + Текст{% endif %}
+            </button>
+            <button type="button" class="tool-btn preset-btn" data-preset="hero-center">
+                ▣ {% if language == 'english' %}Hero Block{% else %}Hero-блок{% endif %}
+            </button>
+        </div>
+
+        <div class="right-actions">
+            <form method="post" style="display:inline;">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="toggle_lang">
+                <button type="submit" class="lang-btn">
+                    {% if language == 'english' %}RU / EN{% else %}EN / RU{% endif %}
+                </button>
+            </form>
+
+            <button type="button" id="open-compile-modal" class="compile-btn">
+                {% if language == 'english' %}Compile Django Project{% else %}Скомпилировать проект{% endif %}
+            </button>
+        </div>
+    </header>
+
+    <!-- Основная рабочая область -->
+    <main class="editor-layout">
+        <!-- Холст сайта -->
+        <section class="canvas-wrapper">
+            <div id="workspace" class="workspace" style="background-color: #ffffff; font-family: 'Roboto', sans-serif; height: 800px;">
+                <!-- Сюда добавляются перетаскиваемые элементы -->
+            </div>
+        </section>
+
+        <!-- Правая панель настроек -->
+        <aside class="properties-panel">
+            <h3>{% if language == 'english' %}Page Settings{% else %}Настройки страницы{% endif %}</h3>
+
+            <div class="prop-group">
+                <label>{% if language == 'english' %}Background Color{% else %}Цвет фона сайта{% endif %}</label>
+                <input type="color" id="page-bg-color" value="#ffffff">
+            </div>
+
+            <div class="prop-group">
+                <button type="button" id="extend-canvas-btn" class="tool-btn" style="width: 100%; margin-top: 4px; text-align: center;">
+                        + {% if language == 'english' %}Extend Page (+300px){% else %}Удлинить страницу (+300px){% endif %}
+                </button>
+                <label>{% if language == 'english' %}Site Font{% else %}Шрифт сайта{% endif %}</label>
+
+                <select id="page-font-family">
+                    <option value="'Roboto', sans-serif">Roboto (Без засечек)</option>
+                    <option value="'Montserrat', sans-serif">Montserrat (Современный)</option>
+                    <option value="'Playfair Display', serif">Playfair Display (С засечками)</option>
+                    <option value="'Lora', serif">Lora (Книжный)</option>
+                    <option value="monospace">Monospace (Код)</option>
+                </select>
+            </div>
+
+            <hr class="divider">
+
+            <h3>{% if language == 'english' %}Element Settings{% else %}Настройки элемента{% endif %}</h3>
+            <p id="no-selection-hint" class="hint">
+                {% if language == 'english' %}Click any element on the canvas to edit its style or drag ⠿ to move it.{% else %}Нажмите на элемент, чтобы изменить стиль, или потяните за ⠿, чтобы переместить.{% endif %}
+            </p>
+
+            <!-- Координаты выбранного элемента -->
+            <div id="position-controls" class="hidden">
+                <div class="prop-row">
+                    <div class="prop-group">
+                        <label>X (px)</label>
+                        <input type="number" id="el-pos-x" value="0">
+                    </div>
+                    <div class="prop-group">
+                        <label>Y (px)</label>
+                        <input type="number" id="el-pos-y" value="0">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Настройки текста -->
+            <div id="text-controls" class="hidden">
+                <div class="prop-group">
+                    <label>{% if language == 'english' %}Text Color{% else %}Цвет текста{% endif %}</label>
+                    <input type="color" id="el-text-color" value="#000000">
+                </div>
+
+                <div class="prop-group">
+                    <label>{% if language == 'english' %}Font Size (px){% else %}Размер шрифта (px){% endif %}</label>
+                    <input type="number" id="el-font-size" min="10" max="120" value="16">
+                </div>
+
+                <div class="prop-group">
+                    <label>{% if language == 'english' %}Block Width (px){% else %}Ширина блока (px){% endif %}</label>
+                    <input type="number" id="el-text-width" min="50" max="960" value="400">
+                </div>
+
+                <div class="prop-group">
+                    <label>{% if language == 'english' %}Alignment{% else %}Выравнивание{% endif %}</label>
+                    <select id="el-text-align">
+                        <option value="left">{% if language == 'english' %}Left{% else %}Слева{% endif %}</option>
+                        <option value="center">{% if language == 'english' %}Center{% else %}По центру{% endif %}</option>
+                        <option value="right">{% if language == 'english' %}Right{% else %}Справа{% endif %}</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Настройки картинки -->
+            <div id="image-controls" class="hidden">
+                <div class="prop-group">
+                    <label>{% if language == 'english' %}Upload Image{% else %}Загрузить с ПК{% endif %}</label>
+                    <input type="file" id="el-img-upload" accept="image/*">
+                </div>
+
+                <div class="prop-group">
+                    <label>{% if language == 'english' %}Or Image URL{% else %}Или ссылка (URL){% endif %}</label>
+                    <input type="text" id="el-img-url" placeholder="https://...">
+                </div>
+
+                <div class="prop-group">
+                    <label>{% if language == 'english' %}Width (px){% else %}Ширина (px){% endif %}</label>
+                    <input type="range" id="el-img-width" min="50" max="960" value="300">
+                </div>
+            </div>
+
+            <button type="button" id="delete-element-btn" class="delete-btn hidden">
+                {% if language == 'english' %}Delete Element{% else %}Удалить элемент{% endif %}
+            </button>
+        </aside>
+    </main>
+
+    <!-- Модальное окно компиляции -->
+    <dialog id="django-compiller" class="modal">
+        <form method="post" id="compile-form">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="compile">
+            <input type="hidden" name="html_code" id="html-content-input">
+            <input type="hidden" name="bg_color" id="hidden-bg-color" value="#ffffff">
+            <input type="hidden" name="font_family" id="hidden-font-family" value="'Roboto', sans-serif">
+            <input type="hidden" name="canvas_height" id="hidden-canvas-height" value="800">
+
+            <h2>{% if language == 'english' %}Compile Settings{% else %}Параметры сборки{% endif %}</h2>
+
+            <div class="prop-group">
+                <label>{% if language == 'english' %}Project Name{% else %}Имя проекта (латиница){% endif %}</label>
+                <input type="text" name="project_name" value="myproject" required>
+            </div>
+
+            <div class="prop-group">
+                <label>{% if language == 'english' %}App Name{% else %}Имя приложения (латиница){% endif %}</label>
+                <input type="text" name="app_name" value="myapp" required>
+            </div>
+
+            <div class="instructions">
+                {% if language == 'english' %}
+                <p>After downloading, extract the archive, activate your virtual environment, and run:</p>
+                <code>python manage.py runserver</code>
+                {% else %}
+                <p>Для запуска: распакуйте архив, перейдите в папку проекта, активируйте <code>.venv</code> и выполните:</p>
+                <code>python manage.py runserver</code>
+                {% endif %}
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" id="close-modal-btn" class="cancel-btn">
+                    {% if language == 'english' %}Cancel{% else %}Отмена{% endif %}
+                </button>
+                <button type="submit" class="compile-btn">
+                    {% if language == 'english' %}Download ZIP{% else %}Скачать ZIP{% endif %}
+                </button>
+            </div>
+        </form>
+    </dialog>
+
+    <script src="{% static 'js/constructor.js' %}"></script>
+</body>
+</html>
