@@ -3,7 +3,8 @@
 **A visual website builder that compiles your layout directly into a ready-to-run Django project!**  
 **Визуальный конструктор сайтов, который компилирует ваш макет в готовый Django-проект!**
 
-<img width="1919" height="941" alt="DjanConst Interface" src="https://github.com" />
+<img width="1919" height="941" alt="Снимок экрана 2026-11-26 104453" src="https://github.com/user-attachments/assets/04bdb517-2a14-450c-86e0-ffa5351312b2" />
+
 
 ---
 
