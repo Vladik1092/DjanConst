@@ -55,28 +55,38 @@
 
     <!-- Основная рабочая область -->
     <main class="editor-layout">
-        <!-- Холст сайта -->
-        <section class="canvas-wrapper">
-            <div id="workspace" class="workspace" style="background-color: #ffffff; font-family: 'Roboto', sans-serif; height: 800px;">
-                <!-- Сюда добавляются перетаскиваемые элементы -->
+        <!-- Стопка страниц (как в Word) -->
+        <section class="canvas-wrapper" id="canvas-scroll-area">
+            <div class="pages-container">
+                <div id="pages-stack">
+                    <!-- Сюда JS добавляет листы страниц -->
+                </div>
+
+                <button type="button" id="add-page-btn" class="add-page-btn">
+                    + {% if language == 'english' %}Add Page{% else %}Добавить страницу (Add Page){% endif %}
+                </button>
             </div>
         </section>
 
         <!-- Правая панель настроек -->
         <aside class="properties-panel">
-            <h3>{% if language == 'english' %}Page Settings{% else %}Настройки страницы{% endif %}</h3>
+            <div class="panel-header-row">
+                <h3>{% if language == 'english' %}Page Settings{% else %}Настройки страницы{% endif %}</h3>
+                <span id="active-page-badge" class="page-badge">Page 1</span>
+            </div>
 
             <div class="prop-group">
-                <label>{% if language == 'english' %}Background Color{% else %}Цвет фона сайта{% endif %}</label>
+                <label>{% if language == 'english' %}Page Slug / URL (latin){% else %}Имя / URL страницы (латиница){% endif %}</label>
+                <input type="text" id="page-slug-input" value="index" placeholder="about, contacts...">
+            </div>
+
+            <div class="prop-group">
+                <label>{% if language == 'english' %}Background Color{% else %}Цвет фона страницы{% endif %}</label>
                 <input type="color" id="page-bg-color" value="#ffffff">
             </div>
 
             <div class="prop-group">
-                <button type="button" id="extend-canvas-btn" class="tool-btn" style="width: 100%; margin-top: 4px; text-align: center;">
-                        + {% if language == 'english' %}Extend Page (+300px){% else %}Удлинить страницу (+300px){% endif %}
-                </button>
-                <label>{% if language == 'english' %}Site Font{% else %}Шрифт сайта{% endif %}</label>
-
+                <label>{% if language == 'english' %}Page Font{% else %}Шрифт страницы{% endif %}</label>
                 <select id="page-font-family">
                     <option value="'Roboto', sans-serif">Roboto (Без засечек)</option>
                     <option value="'Montserrat', sans-serif">Montserrat (Современный)</option>
@@ -85,6 +95,14 @@
                     <option value="monospace">Monospace (Код)</option>
                 </select>
             </div>
+
+            <button type="button" id="extend-canvas-btn" class="tool-btn" style="width: 100%; margin-top: 4px; text-align: center;">
+                + {% if language == 'english' %}Extend Page (+300px){% else %}Удлинить страницу (+300px){% endif %}
+            </button>
+
+            <button type="button" id="delete-page-btn" class="delete-page-btn hidden">
+                {% if language == 'english' %}Delete This Page{% else %}Удалить эту страницу{% endif %}
+            </button>
 
             <hr class="divider">
 
@@ -163,10 +181,7 @@
         <form method="post" id="compile-form">
             {% csrf_token %}
             <input type="hidden" name="action" value="compile">
-            <input type="hidden" name="html_code" id="html-content-input">
-            <input type="hidden" name="bg_color" id="hidden-bg-color" value="#ffffff">
-            <input type="hidden" name="font_family" id="hidden-font-family" value="'Roboto', sans-serif">
-            <input type="hidden" name="canvas_height" id="hidden-canvas-height" value="800">
+            <input type="hidden" name="pages_data" id="pages-data-input">
 
             <h2>{% if language == 'english' %}Compile Settings{% else %}Параметры сборки{% endif %}</h2>
 
@@ -200,7 +215,6 @@
             </div>
         </form>
     </dialog>
-
-    <script src="{% static 'js/constructor.js' %}"></script>
+   <script src="{% static 'js/constructor.js' %}"></script>
 </body>
 </html>

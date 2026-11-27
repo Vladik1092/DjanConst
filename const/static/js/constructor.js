@@ -1,19 +1,20 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const workspace = document.getElementById('workspace');
+    const pagesStack = document.getElementById('pages-stack');
+    const addPageBtn = document.getElementById('add-page-btn');
     const addButtons = document.querySelectorAll('.add-tag-btn');
     const dialog = document.getElementById('django-compiller');
     const openModalBtn = document.getElementById('open-compile-modal');
     const closeModalBtn = document.getElementById('close-modal-btn');
     const compileForm = document.getElementById('compile-form');
-    const htmlInput = document.getElementById('html-content-input');
+    const pagesDataInput = document.getElementById('pages-data-input');
 
-    // Элементы панели настроек страницы
+    // Элементы панели настроек активной страницы
+    const activePageBadge = document.getElementById('active-page-badge');
+    const pageSlugInput = document.getElementById('page-slug-input');
     const pageBgInput = document.getElementById('page-bg-color');
     const pageFontSelect = document.getElementById('page-font-family');
     const extendCanvasBtn = document.getElementById('extend-canvas-btn');
-    const hiddenBgInput = document.getElementById('hidden-bg-color');
-    const hiddenFontInput = document.getElementById('hidden-font-family');
-    const hiddenCanvasHeight = document.getElementById('hidden-canvas-height');
+    const deletePageBtn = document.getElementById('delete-page-btn');
 
     // Элементы панели настроек выбранного блока
     const noSelectionHint = document.getElementById('no-selection-hint');
@@ -34,29 +35,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const elImgUrl = document.getElementById('el-img-url');
     const elImgWidth = document.getElementById('el-img-width');
 
+    let pages = [];
+    let activePage = null;
     let selectedWrapper = null;
     let elementCounter = 0;
-    let extraManualHeight = 0;
 
-    // 1. Настройка фона, шрифта и ручного удлинения страницы
-    pageBgInput.addEventListener('input', (e) => {
-        workspace.style.backgroundColor = e.target.value;
-        hiddenBgInput.value = e.target.value;
-    });
-
-    pageFontSelect.addEventListener('change', (e) => {
-        workspace.style.fontFamily = e.target.value;
-        hiddenFontInput.value = e.target.value;
-    });
-
-    if (extendCanvasBtn) {
-        extendCanvasBtn.addEventListener('click', () => {
-            extraManualHeight += 300;
-            updateWorkspaceHeight();
-        });
-    }
-
-    // 2. Вспомогательная функция перевода RGB в HEX
+    // Вспомогательная функция перевода RGB в HEX
     function rgbToHex(rgb) {
         if (!rgb || rgb.startsWith('#')) return rgb || '#000000';
         const match = rgb.match(/\d+/g);
@@ -64,19 +48,161 @@ document.addEventListener('DOMContentLoaded', () => {
         return '#' + match.slice(0, 3).map(x => parseInt(x).toString(16).padStart(2, '0')).join('');
     }
 
-    // Автоматически расширяем холст вниз по мере роста контента
-    function updateWorkspaceHeight() {
-        let maxBottom = 800 + extraManualHeight;
-        workspace.querySelectorAll('.draggable-item').forEach(item => {
+    // Снятие выделения с текущего элемента
+    function clearElementSelection() {
+        if (selectedWrapper) {
+            selectedWrapper.classList.remove('selected-element');
+            selectedWrapper = null;
+        }
+        noSelectionHint.classList.remove('hidden');
+        positionControls.classList.add('hidden');
+        textControls.classList.add('hidden');
+        imageControls.classList.add('hidden');
+        deleteBtn.classList.add('hidden');
+    }
+
+    // Пересчёт высоты конкретной страницы
+    function updatePageHeight(pageObj) {
+        let maxBottom = 800 + pageObj.extraHeight;
+        pageObj.workspaceEl.querySelectorAll('.draggable-item').forEach(item => {
             const bottom = item.offsetTop + item.offsetHeight + 150;
             if (bottom > maxBottom) maxBottom = bottom;
         });
-        workspace.style.height = `${maxBottom}px`;
-        hiddenCanvasHeight.value = maxBottom;
+        pageObj.height = maxBottom;
+        pageObj.workspaceEl.style.height = `${maxBottom}px`;
     }
 
-    // 3. Выделение элемента на холсте
-    function selectWrapper(wrapper) {
+    // Обновление шапок и нумерации всех страниц
+    function refreshPageHeaders() {
+        pages.forEach((p, idx) => {
+            const routeText = idx === 0 ? '/ (Главная)' : `/${p.slug}/`;
+            p.headerTitleEl.textContent = `Страница ${idx + 1} — ${p.slug}`;
+            p.headerRouteEl.textContent = `URL: ${routeText}`;
+        });
+
+        if (activePage) {
+            const activeIdx = pages.indexOf(activePage);
+            activePageBadge.textContent = `Page ${activeIdx + 1}`;
+            if (pages.length > 1 && activeIdx > 0) {
+                deletePageBtn.classList.remove('hidden');
+            } else {
+                deletePageBtn.classList.add('hidden');
+            }
+        }
+    }
+
+    // Выбор активной страницы и загрузка её настроек в правую панель
+    function setActivePage(pageObj) {
+        if (activePage && activePage !== pageObj) {
+            activePage.blockEl.classList.remove('active-page');
+            clearElementSelection();
+        }
+        activePage = pageObj;
+        activePage.blockEl.classList.add('active-page');
+
+        pageSlugInput.value = activePage.slug;
+        pageBgInput.value = activePage.bgColor;
+        pageFontSelect.value = activePage.fontFamily;
+
+        refreshPageHeaders();
+    }
+
+    // Создание новой страницы (листа)
+    function createPage(customSlug = null) {
+        const pageNum = pages.length + 1;
+        const slug = customSlug || (pageNum === 1 ? 'index' : `page${pageNum}`);
+
+        const blockEl = document.createElement('div');
+        blockEl.className = 'page-block';
+
+        const headerBar = document.createElement('div');
+        headerBar.className = 'page-header-bar';
+
+        const headerTitleEl = document.createElement('span');
+        const headerRouteEl = document.createElement('span');
+        headerBar.appendChild(headerTitleEl);
+        headerBar.appendChild(headerRouteEl);
+
+        const workspaceEl = document.createElement('div');
+        workspaceEl.className = 'workspace';
+        workspaceEl.style.backgroundColor = '#ffffff';
+        workspaceEl.style.fontFamily = "'Roboto', sans-serif";
+        workspaceEl.style.height = '800px';
+
+        blockEl.appendChild(headerBar);
+        blockEl.appendChild(workspaceEl);
+        pagesStack.appendChild(blockEl);
+
+        const pageObj = {
+            slug: slug,
+            bgColor: '#ffffff',
+            fontFamily: "'Roboto', sans-serif",
+            height: 800,
+            extraHeight: 0,
+            blockEl,
+            workspaceEl,
+            headerTitleEl,
+            headerRouteEl
+        };
+
+        pages.push(pageObj);
+
+        headerBar.addEventListener('click', () => setActivePage(pageObj));
+        workspaceEl.addEventListener('click', () => {
+            setActivePage(pageObj);
+            clearElementSelection();
+        });
+
+        setActivePage(pageObj);
+        return pageObj;
+    }
+
+    // Кнопка добавления новой страницы (+ Add Page)
+    addPageBtn.addEventListener('click', () => {
+        const newPage = createPage();
+        newPage.blockEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+
+    // Настройки активной страницы в правой панели
+    pageSlugInput.addEventListener('input', (e) => {
+        if (!activePage) return;
+        const cleaned = e.target.value.replace(/[^a-zA-Z0-9_]/g, '').toLowerCase();
+        activePage.slug = cleaned || 'page';
+        refreshPageHeaders();
+    });
+
+    pageBgInput.addEventListener('input', (e) => {
+        if (!activePage) return;
+        activePage.bgColor = e.target.value;
+        activePage.workspaceEl.style.backgroundColor = e.target.value;
+    });
+
+    pageFontSelect.addEventListener('change', (e) => {
+        if (!activePage) return;
+        activePage.fontFamily = e.target.value;
+        activePage.workspaceEl.style.fontFamily = e.target.value;
+    });
+
+    extendCanvasBtn.addEventListener('click', () => {
+        if (!activePage) return;
+        activePage.extraHeight += 300;
+        updatePageHeight(activePage);
+    });
+
+    deletePageBtn.addEventListener('click', () => {
+        if (!activePage || pages.length <= 1) return;
+        const idx = pages.indexOf(activePage);
+        activePage.blockEl.remove();
+        pages.splice(idx, 1);
+        clearElementSelection();
+        setActivePage(pages[Math.max(0, idx - 1)]);
+    });
+
+    // Выделение элемента на холсте
+    function selectWrapper(wrapper, pageObj) {
+        if (activePage !== pageObj) {
+            setActivePage(pageObj);
+        }
         if (selectedWrapper) {
             selectedWrapper.classList.remove('selected-element');
         }
@@ -109,8 +235,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // 4. Логика свободного перетаскивания (Drag-and-Drop)
-    function makeDraggable(wrapper, handle, isImage) {
+    // Логика свободного перетаскивания (Drag-and-Drop) в пределах листа
+    function makeDraggable(wrapper, handle, isImage, pageObj) {
         let isDragging = false;
         let startMouseX = 0;
         let startMouseY = 0;
@@ -120,7 +246,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const onMouseDown = (e) => {
             e.preventDefault();
             e.stopPropagation();
-            selectWrapper(wrapper);
+            selectWrapper(wrapper, pageObj);
 
             isDragging = true;
             startMouseX = e.clientX;
@@ -137,7 +263,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const dx = e.clientX - startMouseX;
             const dy = e.clientY - startMouseY;
 
-            const maxLeft = workspace.clientWidth - wrapper.offsetWidth;
+            const maxLeft = pageObj.workspaceEl.clientWidth - wrapper.offsetWidth;
             const newLeft = Math.max(0, Math.min(maxLeft, startLeft + dx));
             const newTop = Math.max(0, startTop + dy);
 
@@ -146,7 +272,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             elPosX.value = newLeft;
             elPosY.value = newTop;
-            updateWorkspaceHeight();
+            updatePageHeight(pageObj);
         };
 
         const onMouseUp = () => {
@@ -161,8 +287,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // 5. Универсальная функция создания элемента на холсте
+    // Универсальная функция создания элемента на активной странице
     function createCanvasElement(tagName, options = {}) {
+        const targetPage = activePage || pages[0];
         const wrapper = document.createElement('div');
         wrapper.className = 'draggable-item';
 
@@ -184,7 +311,7 @@ document.addEventListener('DOMContentLoaded', () => {
             innerEl.src = options.src || 'https://placehold.co';
             innerEl.alt = 'Site image';
             wrapper.style.width = `${options.width || 300}px`;
-            innerEl.addEventListener('load', updateWorkspaceHeight);
+            innerEl.addEventListener('load', () => updatePageHeight(targetPage));
         } else {
             innerEl.textContent = options.text || (tagName === 'h1' ? 'Введите заголовок...' : 'Введите текст...');
             innerEl.contentEditable = true;
@@ -195,27 +322,27 @@ document.addEventListener('DOMContentLoaded', () => {
             if (options.color) innerEl.style.color = options.color;
             if (options.textAlign) innerEl.style.textAlign = options.textAlign;
 
-            innerEl.addEventListener('input', updateWorkspaceHeight);
+            innerEl.addEventListener('input', () => updatePageHeight(targetPage));
         }
 
         wrapper.appendChild(innerEl);
 
         wrapper.addEventListener('click', (e) => {
             e.stopPropagation();
-            selectWrapper(wrapper);
+            selectWrapper(wrapper, targetPage);
         });
 
-        makeDraggable(wrapper, handle, tagName === 'img');
-        workspace.appendChild(wrapper);
-        updateWorkspaceHeight();
+        makeDraggable(wrapper, handle, tagName === 'img', targetPage);
+        targetPage.workspaceEl.appendChild(wrapper);
+        updatePageHeight(targetPage);
 
-        return { wrapper, innerEl };
+        return { wrapper, innerEl, pageObj: targetPage };
     }
 
-    // Вычисляет свободную Y-координату ниже всех текущих блоков на холсте
-    function getNextSectionTop() {
+    // Свободная Y-координата на активной странице
+    function getNextSectionTop(pageObj) {
         let maxBottom = 40;
-        workspace.querySelectorAll('.draggable-item').forEach(item => {
+        pageObj.workspaceEl.querySelectorAll('.draggable-item').forEach(item => {
             const bottom = item.offsetTop + item.offsetHeight + 50;
             if (bottom > maxBottom) maxBottom = bottom;
         });
@@ -226,8 +353,8 @@ document.addEventListener('DOMContentLoaded', () => {
     addButtons.forEach(button => {
         button.addEventListener('click', () => {
             const tagName = button.getAttribute('data-tag');
-            const { wrapper, innerEl } = createCanvasElement(tagName);
-            selectWrapper(wrapper);
+            const { wrapper, innerEl, pageObj } = createCanvasElement(tagName);
+            selectWrapper(wrapper, pageObj);
             if (tagName !== 'img') innerEl.focus();
         });
     });
@@ -236,7 +363,8 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.preset-btn').forEach(button => {
         button.addEventListener('click', () => {
             const preset = button.getAttribute('data-preset');
-            const startY = getNextSectionTop();
+            const targetPage = activePage || pages[0];
+            const startY = getNextSectionTop(targetPage);
 
             if (preset === 'text-left-img-right') {
                 createCanvasElement('h1', {
@@ -261,7 +389,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     width: 400,
                     src: 'https://placehold.co'
                 });
-                selectWrapper(imgBlock.wrapper);
+                selectWrapper(imgBlock.wrapper, targetPage);
 
             } else if (preset === 'img-left-text-right') {
                 createCanvasElement('img', {
@@ -286,7 +414,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     color: '#475569',
                     text: 'Чередование картинки слева и текста справа делает страницу визуально сбалансированной и удобной для чтения.'
                 });
-                selectWrapper(titleBlock.wrapper);
+                selectWrapper(titleBlock.wrapper, targetPage);
 
             } else if (preset === 'hero-center') {
                 const heroTitle = createCanvasElement('h1', {
@@ -307,41 +435,28 @@ document.addEventListener('DOMContentLoaded', () => {
                     textAlign: 'center',
                     text: 'Готовый Django-проект с чистой статикой, шрифтами и вашими изображениями в одном архиве.'
                 });
-                selectWrapper(heroTitle.wrapper);
+                selectWrapper(heroTitle.wrapper, targetPage);
             }
         });
     });
 
-    // Снятие выделения при клике на пустое место холста
-    workspace.addEventListener('click', () => {
-        if (selectedWrapper) {
-            selectedWrapper.classList.remove('selected-element');
-            selectedWrapper = null;
-        }
-        noSelectionHint.classList.remove('hidden');
-        positionControls.classList.add('hidden');
-        textControls.classList.add('hidden');
-        imageControls.classList.add('hidden');
-        deleteBtn.classList.add('hidden');
-    });
-
-    // 6. Точный ввод координат X и Y вручную
+    // Точный ввод координат X и Y вручную
     elPosX.addEventListener('input', (e) => {
-        if (selectedWrapper) {
-            const val = Math.max(0, Math.min(workspace.clientWidth - selectedWrapper.offsetWidth, parseInt(e.target.value) || 0));
+        if (selectedWrapper && activePage) {
+            const val = Math.max(0, Math.min(activePage.workspaceEl.clientWidth - selectedWrapper.offsetWidth, parseInt(e.target.value) || 0));
             selectedWrapper.style.left = `${val}px`;
         }
     });
 
     elPosY.addEventListener('input', (e) => {
-        if (selectedWrapper) {
+        if (selectedWrapper && activePage) {
             const val = Math.max(0, parseInt(e.target.value) || 0);
             selectedWrapper.style.top = `${val}px`;
-            updateWorkspaceHeight();
+            updatePageHeight(activePage);
         }
     });
 
-    // 7. Изменение стилей выбранного текста
+    // Изменение стилей выбранного текста
     elTextColor.addEventListener('input', (e) => {
         if (selectedWrapper) {
             const innerEl = selectedWrapper.querySelector('.editable-content');
@@ -350,21 +465,21 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     elFontSize.addEventListener('input', (e) => {
-        if (selectedWrapper) {
+        if (selectedWrapper && activePage) {
             const innerEl = selectedWrapper.querySelector('.editable-content');
             if (innerEl.tagName !== 'IMG') {
                 innerEl.style.fontSize = `${e.target.value}px`;
-                updateWorkspaceHeight();
+                updatePageHeight(activePage);
             }
         }
     });
 
     elTextWidth.addEventListener('input', (e) => {
-        if (selectedWrapper) {
+        if (selectedWrapper && activePage) {
             const innerEl = selectedWrapper.querySelector('.editable-content');
             if (innerEl.tagName !== 'IMG') {
                 selectedWrapper.style.width = `${e.target.value}px`;
-                updateWorkspaceHeight();
+                updatePageHeight(activePage);
             }
         }
     });
@@ -378,7 +493,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // 8. Изменение и загрузка картинок
+    // Изменение и загрузка картинок
     elImgUrl.addEventListener('input', (e) => {
         if (selectedWrapper && e.target.value.trim()) {
             const innerEl = selectedWrapper.querySelector('.editable-content');
@@ -392,7 +507,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const file = e.target.files[0];
         if (file && selectedWrapper) {
             const innerEl = selectedWrapper.querySelector('.editable-content');
-            if (innerEl.tagName === 'IMG') {
+ if (innerEl.tagName === 'IMG') {
                 const reader = new FileReader();
                 reader.onload = (event) => {
                     innerEl.src = event.target.result;
@@ -404,56 +519,73 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     elImgWidth.addEventListener('input', (e) => {
-        if (selectedWrapper) {
+        if (selectedWrapper && activePage) {
             const innerEl = selectedWrapper.querySelector('.editable-content');
             if (innerEl.tagName === 'IMG') {
                 selectedWrapper.style.width = `${e.target.value}px`;
-                updateWorkspaceHeight();
+                updatePageHeight(activePage);
             }
         }
     });
 
-    // 9. Удаление элемента
+    // Удаление элемента
     deleteBtn.addEventListener('click', () => {
-        if (selectedWrapper) {
+        if (selectedWrapper && activePage) {
             selectedWrapper.remove();
-            selectedWrapper = null;
-            noSelectionHint.classList.remove('hidden');
-            positionControls.classList.add('hidden');
-            textControls.classList.add('hidden');
-            imageControls.classList.add('hidden');
-            deleteBtn.classList.add('hidden');
-            updateWorkspaceHeight();
+            clearElementSelection();
+            updatePageHeight(activePage);
         }
     });
 
-    // 10. Управление модальным окном компиляции
+    // Управление модальным окном компиляции
     openModalBtn.addEventListener('click', () => {
-        updateWorkspaceHeight();
+        pages.forEach(p => updatePageHeight(p));
         dialog.showModal();
     });
 
     closeModalBtn.addEventListener('click', () => dialog.close());
 
-    // 11. Очистка и сбор HTML перед отправкой на сервер
-    compileForm.addEventListener('submit', () => {
-        const clone = workspace.cloneNode(true);
+    // Очистка и сбор JSON всех страниц перед отправкой на сервер
+     compileForm.addEventListener('submit', () => {
+        const compiledPages = pages.map((p, idx) => {
+            const clone = p.workspaceEl.cloneNode(true);
 
-        clone.querySelectorAll('.drag-handle').forEach(handle => handle.remove());
+            clone.querySelectorAll('.drag-handle').forEach(handle => handle.remove());
 
-        clone.querySelectorAll('.draggable-item').forEach(wrapper => {
-            wrapper.className = 'site-element';
+            clone.querySelectorAll('.draggable-item').forEach(wrapper => {
+                wrapper.className = 'site-element';
+            });
+
+            clone.querySelectorAll('.editable-content').forEach(el => {
+                el.removeAttribute('contenteditable');
+                el.classList.remove('editable-content');
+                if (el.classList.length === 0) {
+                    el.removeAttribute('class');
+                }
+                if (el.style.outline === 'none') {
+                    el.style.outline = '';
+                }
+                if (!el.getAttribute('style') || el.getAttribute('style').trim() === '') {
+                    el.removeAttribute('style');
+                }
+            });
+
+            const safeSlug = p.slug || (idx === 0 ? 'index' : `page${idx + 1}`);
+
+            return {
+                slug: safeSlug,
+                title: safeSlug,
+                bgColor: p.bgColor,
+                fontFamily: p.fontFamily,
+                height: p.height,
+                html: clone.innerHTML.trim()
+            };
         });
 
-        clone.querySelectorAll('.editable-content').forEach(el => {
-            el.removeAttribute('contenteditable');
-            el.classList.remove('editable-content');
-            if (el.style.outline === 'none') {
-                el.style.outline = '';
-            }
-        });
-
-        htmlInput.value = clone.innerHTML.trim();
+        pagesDataInput.value = JSON.stringify(compiledPages);
         dialog.close();
     });
+
+    // Инициализируем первую страницу при загрузке
+    createPage('index');
 });
