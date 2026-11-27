@@ -50,7 +50,7 @@ myproject/
 #### Option 1: Run via Docker (No Python or Django installation required)
 1. Clone the repository:
    ```bash
-   git clone https://github.com
+   git clone https://github.com/Vladik1092/DjanConst.git
    cd DjanConst
    ```
 2. Create an `.env` file from the example:
@@ -132,7 +132,7 @@ myproject/
 #### Вариант 1: Через Docker (не требует установки Python и Django)
 1. Клонируйте репозиторий:
    ```bash
-   git clone https://github.com
+   git clone https://github.com/Vladik1092/DjanConst.git
    cd DjanConst
    ```
 2. Создайте файл `.env` из шаблона:
