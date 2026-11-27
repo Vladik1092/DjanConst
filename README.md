@@ -66,7 +66,7 @@ myproject/
 #### Option 2: Local Setup (Python 3.11+)
 1. Clone the repository and create a virtual environment:
    ```bash
-   git clone https://github.com
+   git clone https://github.com/Vladik1092/DjanConst.git
    cd DjanConst
    python -m venv .venv
    # Windows: .venv\Scripts\activate
@@ -148,7 +148,7 @@ myproject/
 #### Вариант 2: Локальный запуск (Python 3.11+)
 1. Клонируйте репозиторий и создайте виртуальное окружение:
    ```bash
-   git clone https://github.com
+   git clone https://github.com/Vladik1092/DjanConst.git
    cd DjanConst
    python -m venv .venv
    # Windows: .venv\Scripts\activate
